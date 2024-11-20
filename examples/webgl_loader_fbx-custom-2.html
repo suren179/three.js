@@ -46,6 +46,25 @@
 				font-family: Arial;
 				min-width: 60px;
 			}
+			.model-switcher {
+				position: fixed;
+				top: 20px;
+				right: 20px;
+				background: rgba(0,0,0,0.7);
+				padding: 15px;
+				border-radius: 10px;
+				color: white;
+				font-family: Arial;
+			}
+			.model-select, .animation-select {
+				margin: 5px 0;
+				padding: 5px;
+				background: #444;
+				color: white;
+				border: 1px solid #666;
+				border-radius: 5px;
+				width: 200px;
+			}
 		</style>
 	</head>
 	<body>
@@ -66,7 +85,24 @@
 			let camera, scene, renderer;
 			let mixer, action, animationDuration;
 			let isPlaying = true;
+			let currentModel = null;
 			const clock = new THREE.Clock();
+
+			// Model and animation configurations
+			const models = {
+				'Character 1': {
+					model: 'models/fbx/Playful-pose.fbx',
+					animations: {
+						'Dance': 'models/fbx/Playful.fbx',
+					}
+				},
+				'Character 2': {
+					model: 'models/fbx/Ballet-Giselle-Male-Solo_T-pose.fbx',
+					animations: {
+						'Dance': 'models/fbx/Ballet-Giselle-Male-Solo_0.fbx',
+					}
+				}
+			};
 
 			// Create UI elements
 			const controls = document.createElement('div');
@@ -90,6 +126,25 @@
 			timeDisplay.className = 'time';
 			timeDisplay.textContent = '0:00 / 0:00';
 			controls.appendChild(timeDisplay);
+
+			// Create model switcher
+			const modelSwitcher = document.createElement('div');
+			modelSwitcher.className = 'model-switcher';
+			document.body.appendChild(modelSwitcher);
+
+			const modelSelect = document.createElement('select');
+			modelSelect.className = 'model-select';
+			Object.keys(models).forEach(model => {
+				const option = document.createElement('option');
+				option.value = model;
+				option.textContent = model;
+				modelSelect.appendChild(option);
+			});
+			modelSwitcher.appendChild(modelSelect);
+
+			const animationSelect = document.createElement('select');
+			animationSelect.className = 'animation-select';
+			modelSwitcher.appendChild(animationSelect);
 
 			init();
 
@@ -126,35 +181,6 @@
 				grid.material.opacity = 0.1;
 				grid.material.transparent = true;
 				scene.add(grid);
-				const params = {
-				model: 'models/fbx/Playful-pose.fbx',
-				animation: 'models/fbx/Playful.fbx'
-			};
-
-				const loader = new FBXLoader();
-				loader.load(params.model, (fbx) => {
-					const model = fbx;
-					model.scale.setScalar(1);
-					model.traverse((child) => {
-						if (child.isMesh) {
-							child.castShadow = true;
-							child.receiveShadow = true;
-						}
-					});
-					scene.add(model);
-
-					mixer = new THREE.AnimationMixer(model);
-
-					loader.load(params.animation, (animFbx) => {
-						const animation = animFbx.animations[0];
-						if (animation) {
-							action = mixer.clipAction(animation);
-							action.play();
-							animationDuration = animation.duration;
-							updateTimeDisplay(0, animationDuration);
-						}
-					});
-				});
 
 				renderer = new THREE.WebGLRenderer({ antialias: true });
 				renderer.setPixelRatio(window.devicePixelRatio);
@@ -167,12 +193,70 @@
 				controls.update();
 
 				window.addEventListener('resize', onWindowResize);
-
-				// Add control listeners
 				playButton.addEventListener('click', togglePlay);
 				timeline.addEventListener('click', seek);
+				modelSelect.addEventListener('change', loadModel);
+				animationSelect.addEventListener('change', loadAnimation);
 
+				// Load initial model
+				loadModel();
 				animate();
+			}
+
+			function updateAnimationList() {
+				const modelName = modelSelect.value;
+				animationSelect.innerHTML = '';
+				Object.keys(models[modelName].animations).forEach(anim => {
+					const option = document.createElement('option');
+					option.value = anim;
+					option.textContent = anim;
+					animationSelect.appendChild(option);
+				});
+			}
+
+			function loadModel() {
+				const modelName = modelSelect.value;
+				const loader = new FBXLoader();
+
+				if (currentModel) {
+					scene.remove(currentModel);
+				}
+
+				loader.load(models[modelName].model, (fbx) => {
+					currentModel = fbx;
+					currentModel.scale.setScalar(1);
+					currentModel.traverse((child) => {
+						if (child.isMesh) {
+							child.castShadow = true;
+							child.receiveShadow = true;
+						}
+					});
+					scene.add(currentModel);
+					mixer = new THREE.AnimationMixer(currentModel);
+					
+					updateAnimationList();
+					loadAnimation();
+				});
+			}
+
+			function loadAnimation() {
+				const modelName = modelSelect.value;
+				const animationName = animationSelect.value;
+				const loader = new FBXLoader();
+
+				if (action) {
+					action.stop();
+				}
+
+				loader.load(models[modelName].animations[animationName], (animFbx) => {
+					const animation = animFbx.animations[0];
+					if (animation) {
+						action = mixer.clipAction(animation);
+						action.play();
+						animationDuration = animation.duration;
+						updateTimeDisplay(0, animationDuration);
+					}
+				});
 			}
 
 			function togglePlay() {
