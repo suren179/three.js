@@ -81,6 +81,7 @@
 			import * as THREE from 'three';
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 			import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+			import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 			let camera, scene, renderer;
 			let mixer, action, animationDuration;
@@ -101,7 +102,22 @@
 					animations: {
 						'Dance': 'models/fbx/Ballet-Giselle-Male-Solo_0.fbx',
 					}
+				},
+				'Character 3': {
+					model: 'models/fbx/rhythmic dance 1_T-pose.fbx',
+					animations: {
+						'Dance': 'models/fbx/rhythmic dance 1_0.fbx',
+						'Dance 2': 'models/fbx/F_Dances_001.fbx',
+					}
+				},
+				'Character 4': {
+					model: 'models/fbx/673e033fb2b26dec4c69e0ef.glb',
+					animations: {
+						'Dance': 'models/fbx/F_Dances_001.fbx',
+					}
 				}
+
+				
 			};
 
 			// Create UI elements
@@ -216,7 +232,13 @@
 
 			function loadModel() {
 				const modelName = modelSelect.value;
-				const loader = new FBXLoader();
+				let loader;
+				if(models[modelName].model?.endsWith('fbx')){
+					loader = new FBXLoader();
+				}else{
+					loader = new GLTFLoader();
+				}
+				
 
 				if (currentModel) {
 					scene.remove(currentModel);
